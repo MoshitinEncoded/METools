@@ -1,0 +1,19 @@
+{
+  "name": "com.moshitin-encoded.metools",
+  "version": "0.1.0",
+  "displayName": "METools",
+  "description": "Common tools and extensions for all MoshitinEncoded packages.\nIncludes Editor and Runtime features.",
+  "unity": "2021.2",
+  "documentationUrl": "https://example.com/",
+  "changelogUrl": "https://github.com/MoshitinEncoded/METools/blob/main/CHANGELOG.md",
+  "licensesUrl": "https://github.com/MoshitinEncoded/METools/blob/main/LICENSE",
+  "keywords": [
+    "tool",
+    "free"
+  ],
+  "author": {
+    "name": "Moshitin Encoded",
+    "email": "moshitin.encoded@gmail.com",
+    "url": "https://github.com/MoshitinEncoded"
+  }
+}
