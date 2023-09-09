@@ -4,7 +4,7 @@
   "displayName": "METools",
   "description": "Common tools and extensions for all MoshitinEncoded packages.\nIncludes Editor and Runtime features.",
   "unity": "2021.2",
-  "documentationUrl": "https://example.com/",
+  "documentationUrl": "https://github.com/MoshitinEncoded/METools/blob/main/Documentation~/METools.md",
   "changelogUrl": "https://github.com/MoshitinEncoded/METools/blob/main/CHANGELOG.md",
   "licensesUrl": "https://github.com/MoshitinEncoded/METools/blob/main/LICENSE",
   "keywords": [
