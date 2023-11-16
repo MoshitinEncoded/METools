@@ -10,7 +10,7 @@ using System.Collections.Generic;
 
 namespace MoshitinEncoded.Editor.GraphTools
 {
-    internal class BlackboardView : GraphView.Blackboard
+    public class BlackboardView : GraphView.Blackboard
     {
         private Blackboard _Blackboard;
         private Type _ParameterBaseType;
@@ -124,28 +124,6 @@ namespace MoshitinEncoded.Editor.GraphTools
             menu.ShowAsContext();
         }
 
-        private IEnumerable<IGrouping<int, ParameterAttributeData>> GetParameterDataGroups()
-        {
-            var parameterTypes = TypeCache.GetTypesDerivedFrom(_ParameterBaseType).AsEnumerable();
-            parameterTypes = parameterTypes.Where(TypeHasAddParameterMenuAttribute);
-
-            var parametersData = parameterTypes.Select(type =>
-                new ParameterAttributeData()
-                {
-                    Type = type,
-                    Attribute = type.GetCustomAttribute<AddParameterMenuAttribute>()
-                }
-            );
-
-            var parametersDataGroups = parametersData.GroupBy(parameter => parameter.Attribute.GroupLevel);
-            parametersDataGroups = parametersDataGroups.OrderByDescending(group => group.Key);
-            
-            return parametersDataGroups;
-        }
-
-        private bool TypeHasAddParameterMenuAttribute(Type type) =>
-            type.GetCustomAttribute<AddParameterMenuAttribute>() != null;
-
         private void AddParameterTypeOf(object parameterType)
         {
             // Create the parameter
@@ -253,10 +231,32 @@ namespace MoshitinEncoded.Editor.GraphTools
             return newParameterName;
         }
 
+        private IEnumerable<IGrouping<int, ParameterAttributeData>> GetParameterDataGroups()
+        {
+            var parameterTypes = TypeCache.GetTypesDerivedFrom(_ParameterBaseType).AsEnumerable();
+            parameterTypes = parameterTypes.Where(TypeHasAddParameterMenuAttribute);
+
+            var parametersData = parameterTypes.Select(type =>
+                new ParameterAttributeData()
+                {
+                    Type = type,
+                    Attribute = type.GetCustomAttribute<AddParameterMenuAttribute>()
+                }
+            );
+
+            var parametersDataGroups = parametersData.GroupBy(parameter => parameter.Attribute.GroupLevel);
+            parametersDataGroups = parametersDataGroups.OrderByDescending(group => group.Key);
+
+            return parametersDataGroups;
+        }
+
         private BlackboardParameter GetParameter(string name) => _Blackboard.Parameters.FirstOrDefault(p => p.ParameterName == name);
 
         private GraphView.BlackboardRow FindParameterRow(List<GraphView.BlackboardRow> blackboardRows, BlackboardParameter parameter) =>
             blackboardRows.FirstOrDefault(br => br.Q<GraphView.BlackboardField>().text == parameter.ParameterName);
+
+        private bool TypeHasAddParameterMenuAttribute(Type type) =>
+            type.GetCustomAttribute<AddParameterMenuAttribute>() != null;
         
         private struct ParameterAttributeData
         {
