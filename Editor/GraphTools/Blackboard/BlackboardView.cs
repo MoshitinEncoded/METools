@@ -114,7 +114,14 @@ namespace MoshitinEncoded.Editor.GraphTools
                 {
                     if (prevGroupLevel != parameterData.Attribute.GroupLevel)
                     {
-                        menu.AddSeparator("");
+                        var slashIndex = parameterData.Attribute.MenuPath.LastIndexOf('/');
+                        var submenuPath = "";
+                        if (slashIndex > 0)
+                        {
+                            submenuPath = parameterData.Attribute.MenuPath[..slashIndex];
+                        }
+
+                        menu.AddSeparator(submenuPath);
                     }
                 }
 
