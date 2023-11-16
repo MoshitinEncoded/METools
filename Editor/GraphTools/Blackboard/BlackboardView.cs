@@ -254,7 +254,18 @@ namespace MoshitinEncoded.Editor.GraphTools
 
             parametersData = parametersData.OrderBy(data =>
             {
-                return data.Attribute.GroupLevel + data.Attribute.MenuPath.Split('/').Last();
+                var menuPath = data.Attribute.MenuPath;
+                var groupLevel = data.Attribute.GroupLevel;
+                
+                var slashIndex = menuPath.LastIndexOf('/');
+                if (slashIndex > 0)
+                {
+                    return menuPath.Insert(slashIndex, groupLevel.ToString());
+                }
+                else
+                {
+                    return groupLevel + menuPath;
+                }
             });
 
             return parametersData;
@@ -267,7 +278,7 @@ namespace MoshitinEncoded.Editor.GraphTools
 
         private bool TypeHasAddParameterMenuAttribute(Type type) =>
             type.GetCustomAttribute<AddParameterMenuAttribute>() != null;
-        
+
         private struct ParameterAttributeData
         {
             public Type Type;
