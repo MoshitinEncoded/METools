@@ -27,7 +27,7 @@ namespace MoshitinEncoded.Editor.GraphTools
             moveItemRequested += OnMoveParameter;
         }
 
-        public void PopulateView(Blackboard blackboard, Type parameterBaseType)
+        public void PopulateView(Blackboard blackboard, string title, Type parameterBaseType)
         {
             if (_Blackboard == blackboard)
             {
@@ -35,7 +35,7 @@ namespace MoshitinEncoded.Editor.GraphTools
             }
             else
             {
-                title = blackboard.name;
+                this.title = title;
                 _Blackboard = blackboard;
                 _SerializedBlackboard = new SerializedObject(blackboard);
                 _ParameterBaseType = parameterBaseType;
@@ -100,10 +100,11 @@ namespace MoshitinEncoded.Editor.GraphTools
         private void OnAddParameter(GraphView.Blackboard blackboard)
         {
             var menu = new GenericMenu();
-            var parameterDataGroups = GetParameterDataGroups();
+            var parameterDatas = GetParameterDatas();
 
             var isFirst = true;
-            foreach (var parameterDataGroup in parameterDataGroups)
+            var prevGroupLevel = 0;
+            foreach (var parameterData in parameterDatas)
             {
                 if (isFirst)
                 {
@@ -111,14 +112,14 @@ namespace MoshitinEncoded.Editor.GraphTools
                 }
                 else
                 {
-                    menu.AddSeparator("");
+                    if (prevGroupLevel != parameterData.Attribute.GroupLevel)
+                    {
+                        menu.AddSeparator("");
+                    }
                 }
 
-                var parameterDataGroupSorted = parameterDataGroup.OrderByDescending(parameter => parameter.Attribute.MenuPath);
-                foreach (var parameterData in parameterDataGroupSorted)
-                {
-                    menu.AddItem(new GUIContent(parameterData.Attribute.MenuPath), false, AddParameterTypeOf, parameterData);
-                }
+                prevGroupLevel = parameterData.Attribute.GroupLevel;
+                menu.AddItem(new GUIContent(parameterData.Attribute.MenuPath), false, AddParameterTypeOf, parameterData);
             }
 
             menu.ShowAsContext();
@@ -216,7 +217,7 @@ namespace MoshitinEncoded.Editor.GraphTools
             }
         }
 
-        private void RefreshView() => PopulateView(_Blackboard, _ParameterBaseType);
+        private void RefreshView() => PopulateView(_Blackboard, title, _ParameterBaseType);
 
         private string MakeParameterNameUnique(BlackboardParameter parameter, string parameterName)
         {
@@ -231,7 +232,7 @@ namespace MoshitinEncoded.Editor.GraphTools
             return newParameterName;
         }
 
-        private IEnumerable<IGrouping<int, ParameterAttributeData>> GetParameterDataGroups()
+        private IEnumerable<ParameterAttributeData> GetParameterDatas()
         {
             var parameterTypes = TypeCache.GetTypesDerivedFrom(_ParameterBaseType).AsEnumerable();
             parameterTypes = parameterTypes.Where(TypeHasAddParameterMenuAttribute);
@@ -244,10 +245,12 @@ namespace MoshitinEncoded.Editor.GraphTools
                 }
             );
 
-            var parametersDataGroups = parametersData.GroupBy(parameter => parameter.Attribute.GroupLevel);
-            parametersDataGroups = parametersDataGroups.OrderByDescending(group => group.Key);
+            parametersData = parametersData.OrderBy(data =>
+            {
+                return data.Attribute.GroupLevel + data.Attribute.MenuPath.Split('/').Last();
+            });
 
-            return parametersDataGroups;
+            return parametersData;
         }
 
         private BlackboardParameter GetParameter(string name) => _Blackboard.Parameters.FirstOrDefault(p => p.ParameterName == name);
