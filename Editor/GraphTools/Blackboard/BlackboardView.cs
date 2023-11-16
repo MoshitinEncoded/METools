@@ -100,19 +100,51 @@ namespace MoshitinEncoded.Editor.GraphTools
         private void OnAddParameter(GraphView.Blackboard blackboard)
         {
             var menu = new GenericMenu();
+            var parameterDataGroups = GetParameterDataGroups();
 
-            var parameterTypes = TypeCache.GetTypesDerivedFrom(_ParameterBaseType);
-            foreach (var parameterType in parameterTypes)
+            var isFirst = true;
+            foreach (var parameterDataGroup in parameterDataGroups)
             {
-                var parameterAttribute = parameterType.GetCustomAttribute<AddParameterMenuAttribute>();
-                if (parameterAttribute != null)
+                if (isFirst)
                 {
-                    menu.AddItem(new GUIContent(parameterAttribute.MenuPath), false, AddParameterTypeOf, parameterType);
+                    isFirst = false;
+                }
+                else
+                {
+                    menu.AddSeparator("");
+                }
+
+                var parameterDataGroupSorted = parameterDataGroup.OrderByDescending(parameter => parameter.Attribute.MenuPath);
+                foreach (var parameterData in parameterDataGroupSorted)
+                {
+                    menu.AddItem(new GUIContent(parameterData.Attribute.MenuPath), false, AddParameterTypeOf, parameterData);
                 }
             }
 
             menu.ShowAsContext();
         }
+
+        private IEnumerable<IGrouping<int, ParameterAttributeData>> GetParameterDataGroups()
+        {
+            var parameterTypes = TypeCache.GetTypesDerivedFrom(_ParameterBaseType).AsEnumerable();
+            parameterTypes = parameterTypes.Where(TypeHasAddParameterMenuAttribute);
+
+            var parametersData = parameterTypes.Select(type =>
+                new ParameterAttributeData()
+                {
+                    Type = type,
+                    Attribute = type.GetCustomAttribute<AddParameterMenuAttribute>()
+                }
+            );
+
+            var parametersDataGroups = parametersData.GroupBy(parameter => parameter.Attribute.GroupLevel);
+            parametersDataGroups = parametersDataGroups.OrderByDescending(group => group.Key);
+            
+            return parametersDataGroups;
+        }
+
+        private bool TypeHasAddParameterMenuAttribute(Type type) =>
+            type.GetCustomAttribute<AddParameterMenuAttribute>() != null;
 
         private void AddParameterTypeOf(object parameterType)
         {
@@ -225,5 +257,11 @@ namespace MoshitinEncoded.Editor.GraphTools
 
         private GraphView.BlackboardRow FindParameterRow(List<GraphView.BlackboardRow> blackboardRows, BlackboardParameter parameter) =>
             blackboardRows.FirstOrDefault(br => br.Q<GraphView.BlackboardField>().text == parameter.ParameterName);
+        
+        private struct ParameterAttributeData
+        {
+            public Type Type;
+            public AddParameterMenuAttribute Attribute;
+        }
     }
 }
