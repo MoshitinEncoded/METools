@@ -101,35 +101,34 @@ namespace MoshitinEncoded.Editor.GraphTools
         {
             var menu = new GenericMenu();
             var parameterDatas = GetParameterDatas();
-
-            var isFirst = true;
-            var prevGroupLevel = 0;
+    
+            AddParameterMenuAttribute prevAttribute = null;
             foreach (var parameterData in parameterDatas)
             {
-                if (isFirst)
-                {
-                    isFirst = false;
-                }
-                else
-                {
-                    if (prevGroupLevel != parameterData.Attribute.GroupLevel)
-                    {
-                        var slashIndex = parameterData.Attribute.MenuPath.LastIndexOf('/');
-                        var submenuPath = "";
-                        if (slashIndex > 0)
-                        {
-                            submenuPath = parameterData.Attribute.MenuPath[..slashIndex];
-                        }
+                var attribute = parameterData.Attribute;
 
-                        menu.AddSeparator(submenuPath);
-                    }
+                if (IsSeparatorNeeded(attribute))
+                {
+                    menu.AddSeparator(attribute.SubMenuPath);
                 }
 
-                prevGroupLevel = parameterData.Attribute.GroupLevel;
-                menu.AddItem(new GUIContent(parameterData.Attribute.MenuPath), false, AddParameterTypeOf, parameterData);
+                menu.AddItem(new GUIContent(attribute.MenuPath), false, AddParameterTypeOf, parameterData.Type);
+                prevAttribute = attribute;
             }
 
             menu.ShowAsContext();
+
+            bool IsSeparatorNeeded(AddParameterMenuAttribute attribute)
+            {
+                return
+                    prevAttribute != null &&
+                    SubMenuRemains(attribute.SubMenuPath) &&
+                    ChangedGroupLevel(attribute.GroupLevel);
+            }
+
+            bool SubMenuRemains(string subMenu) => prevAttribute.SubMenuPath == subMenu;
+
+            bool ChangedGroupLevel(int groupLevel) => prevAttribute.GroupLevel != groupLevel;
         }
 
         private void AddParameterTypeOf(object parameterType)
@@ -254,18 +253,15 @@ namespace MoshitinEncoded.Editor.GraphTools
 
             parametersData = parametersData.OrderBy(data =>
             {
-                var menuPath = data.Attribute.MenuPath;
-                var groupLevel = data.Attribute.GroupLevel;
+                var parameterMenus = data.Attribute.MenuPath.Split('/');
+                var pathOrder = string.Empty;
+                for (int i = 0; i < parameterMenus.Length - 1; i++)
+                {
+                    pathOrder += int.MaxValue + parameterMenus[i] + '/';
+                }
+                pathOrder += data.Attribute.GroupLevel + parameterMenus.Last();
                 
-                var slashIndex = menuPath.LastIndexOf('/');
-                if (slashIndex > 0)
-                {
-                    return menuPath.Insert(slashIndex, groupLevel.ToString());
-                }
-                else
-                {
-                    return groupLevel + menuPath;
-                }
+                return pathOrder;
             });
 
             return parametersData;
