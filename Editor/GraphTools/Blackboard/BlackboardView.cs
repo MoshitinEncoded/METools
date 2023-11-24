@@ -1,23 +1,28 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+
+using MoshitinEncoded.GraphTools;
+
 using UnityEditor;
-using GraphView = UnityEditor.Experimental.GraphView;
+using UnityEditor.Experimental.GraphView;
+
 using UnityEngine;
 using UnityEngine.UIElements;
-using MoshitinEncoded.GraphTools;
-using System.Collections.Generic;
+
+using Blackboard = UnityEditor.Experimental.GraphView.Blackboard;
 
 namespace MoshitinEncoded.Editor.GraphTools
 {
-    public class BlackboardView : GraphView.Blackboard
+    public class BlackboardView : Blackboard
     {
-        private Blackboard _Blackboard;
+        private MoshitinEncoded.GraphTools.Blackboard _Blackboard;
         private Type _ParameterBaseType;
         private SerializedObject _SerializedBlackboard;
-        private GraphView.BlackboardSection _ParametersSection;
+        private BlackboardSection _ParametersSection;
 
-        public BlackboardView(GraphView.GraphView graphView) : base(graphView)
+        public BlackboardView(GraphView graphView) : base(graphView)
         {
             subTitle = "Blackboard";
             SetPosition(new Rect(10, 10, 300, 300));
@@ -27,7 +32,7 @@ namespace MoshitinEncoded.Editor.GraphTools
             moveItemRequested += OnMoveParameter;
         }
 
-        public void PopulateView(Blackboard blackboard, string title, Type parameterBaseType)
+        public void PopulateView(MoshitinEncoded.GraphTools.Blackboard blackboard, string title, Type parameterBaseType)
         {
             if (_Blackboard == blackboard)
             {
@@ -45,35 +50,47 @@ namespace MoshitinEncoded.Editor.GraphTools
 
             Clear();
 
-            _ParametersSection = new GraphView.BlackboardSection() { title = "Exposed Parameters" };
+            _ParametersSection = new BlackboardSection() { title = "Exposed Parameters" };
             DrawParameters();
 
             Add(_ParametersSection);
         }
 
-        public void DeleteParameter(GraphView.BlackboardField parameterField)
+        public void RemoveParameter(BlackboardField parameterField)
         {
-            var parameterToDelete = GetParameter(parameterField.text);
+            RemoveParameterFromBlackboard(parameterField);
+            RemoveParameterFromView(parameterField);
+        }
 
-            if (parameterToDelete != null)
+        private void RemoveParameterFromBlackboard(BlackboardField parameterField)
+        {
+            var parameterToRemove = GetParameter(parameterField.text);
+
+            if (parameterToRemove != null)
             {
-                _SerializedBlackboard.Update();
-                _SerializedBlackboard.FindProperty("_Parameters").RemoveFromObjectArray(parameterToDelete);
-                _SerializedBlackboard.ApplyModifiedProperties();
-
-                Undo.DestroyObjectImmediate(parameterToDelete);
+                RemoveFromBlackboard(parameterToRemove);
+                Undo.DestroyObjectImmediate(parameterToRemove);
             }
+        }
 
-            var parameterRow = parameterField.GetFirstAncestorOfType<GraphView.BlackboardRow>();
+        private void RemoveParameterFromView(BlackboardField parameterField)
+        {
+            var parameterRow = parameterField.GetFirstAncestorOfType<BlackboardRow>();
             _ParametersSection.Remove(parameterRow);
+        }
+
+        private void RemoveFromBlackboard(BlackboardParameter parameterToRemove)
+        {
+            _SerializedBlackboard.Update();
+            _SerializedBlackboard.FindProperty("_Parameters").RemoveFromObjectArray(parameterToRemove);
+            _SerializedBlackboard.ApplyModifiedProperties();
         }
 
         private void SaveParametersExpandedState()
         {
-            var blackboardRows = this.Query<GraphView.BlackboardRow>().ToList();
             foreach (var parameter in _Blackboard.Parameters)
             {
-                var parameterRow = FindParameterRow(blackboardRows, parameter);
+                var parameterRow = FindParameterRow(parameter);
                 if (parameterRow != null)
                 {
                     BlackboardParameterDrawer.SetExpandedState(parameter, parameterRow.expanded);
@@ -97,11 +114,11 @@ namespace MoshitinEncoded.Editor.GraphTools
             }
         }
 
-        private void OnAddParameter(GraphView.Blackboard blackboard)
+        private void OnAddParameter(Blackboard blackboard)
         {
             var menu = new GenericMenu();
             var parameterDatas = GetParameterDatas();
-    
+
             AddParameterMenuAttribute prevAttribute = null;
             foreach (var parameterData in parameterDatas)
             {
@@ -109,7 +126,11 @@ namespace MoshitinEncoded.Editor.GraphTools
 
                 if (IsSeparatorNeeded(attribute))
                 {
-                    menu.AddSeparator(attribute.SubMenuPath);
+                    menu.AddSeparator(attribute.SubMenuPath + '/');
+                }
+                else if (EnteredUnsortedGroupZone(attribute))
+                {
+                    menu.AddSeparator(prevAttribute.SubMenuPath);
                 }
 
                 menu.AddItem(new GUIContent(attribute.MenuPath), false, AddParameterTypeOf, parameterData.Type);
@@ -123,12 +144,38 @@ namespace MoshitinEncoded.Editor.GraphTools
                 return
                     prevAttribute != null &&
                     SubMenuRemains(attribute.SubMenuPath) &&
-                    ChangedGroupLevel(attribute.GroupLevel);
+                    GroupLevelChanged(attribute.GroupLevel);
             }
 
-            bool SubMenuRemains(string subMenu) => prevAttribute.SubMenuPath == subMenu;
+            bool EnteredUnsortedGroupZone(AddParameterMenuAttribute attribute)
+            {
+                return
+                    prevAttribute != null &&
+                    EnteredSubMenu(attribute.SubMenuPath) &&
+                    prevAttribute.GroupLevel != AddParameterMenuAttribute.UNSORTED_GROUP;
+            }
 
-            bool ChangedGroupLevel(int groupLevel) => prevAttribute.GroupLevel != groupLevel;
+            bool SubMenuRemains(string subMenuPath) => prevAttribute.SubMenuPath == subMenuPath;
+
+            bool GroupLevelChanged(int groupLevel) => prevAttribute.GroupLevel != groupLevel;
+
+            bool EnteredSubMenu(string subMenuPath)
+            {
+                if (subMenuPath.Length <= prevAttribute.SubMenuPath.Length)
+                {
+                    return false;
+                }
+
+                for (var i = 0; i < prevAttribute.SubMenuPath.Length; i++)
+                {
+                    if (prevAttribute.SubMenuPath[i] != subMenuPath[i])
+                    {
+                        return false;
+                    }
+                }
+
+                return true;
+            }
         }
 
         private void AddParameterTypeOf(object parameterType)
@@ -153,14 +200,14 @@ namespace MoshitinEncoded.Editor.GraphTools
             _SerializedBlackboard.ApplyModifiedProperties();
         }
 
-        private void OnEditFieldText(GraphView.Blackboard blackboard, VisualElement element, string newName)
+        private void OnEditFieldText(Blackboard blackboard, VisualElement element, string newName)
         {
             if (newName == "")
             {
                 return;
             }
 
-            if (element is GraphView.BlackboardField parameterField)
+            if (element is BlackboardField parameterField)
             {
                 if (newName == parameterField.text)
                 {
@@ -189,9 +236,9 @@ namespace MoshitinEncoded.Editor.GraphTools
             }
         }
 
-        private void OnMoveParameter(GraphView.Blackboard blackboard, int newIndex, VisualElement element)
+        private void OnMoveParameter(Blackboard blackboard, int newIndex, VisualElement element)
         {
-            if (element is GraphView.BlackboardField parameterField)
+            if (element is BlackboardField parameterField)
             {
                 var srcIndex = -1;
                 for (var i = 0; i < _Blackboard.Parameters.Length; i++)
@@ -260,17 +307,21 @@ namespace MoshitinEncoded.Editor.GraphTools
                     pathOrder += int.MaxValue + parameterMenus[i] + '/';
                 }
                 pathOrder += data.Attribute.GroupLevel + parameterMenus.Last();
-                
+
                 return pathOrder;
             });
 
             return parametersData;
         }
 
-        private BlackboardParameter GetParameter(string name) => _Blackboard.Parameters.FirstOrDefault(p => p.ParameterName == name);
+        private BlackboardParameter GetParameter(string name) =>
+            _Blackboard.GetParameter(name);
 
-        private GraphView.BlackboardRow FindParameterRow(List<GraphView.BlackboardRow> blackboardRows, BlackboardParameter parameter) =>
-            blackboardRows.FirstOrDefault(br => br.Q<GraphView.BlackboardField>().text == parameter.ParameterName);
+        private BlackboardRow FindParameterRow(BlackboardParameter parameter)
+        {
+            var blackboardRows = this.Query<BlackboardRow>().Build().ToArray();
+            return blackboardRows.FirstOrDefault(br => br.Q<BlackboardField>().text == parameter.ParameterName);
+        }
 
         private bool TypeHasAddParameterMenuAttribute(Type type) =>
             type.GetCustomAttribute<AddParameterMenuAttribute>() != null;

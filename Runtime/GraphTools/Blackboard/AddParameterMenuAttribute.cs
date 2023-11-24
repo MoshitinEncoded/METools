@@ -4,16 +4,25 @@ namespace MoshitinEncoded.GraphTools
 {
     public class AddParameterMenuAttribute : Attribute
     {
-        public string MenuPath = string.Empty;
-        public int GroupLevel = int.MaxValue;
-        public string SubMenuPath = string.Empty;
+        public const int UNSORTED_GROUP = int.MaxValue;
+        private readonly string _MenuPath = string.Empty;
+        private readonly string _SubMenuPath = string.Empty;
+        private readonly int _GroupLevel = UNSORTED_GROUP;
 
-        public AddParameterMenuAttribute()
+        public string MenuPath => _MenuPath;
+
+        public string SubMenuPath => _SubMenuPath;
+
+        public int GroupLevel => _GroupLevel;
+
+        public AddParameterMenuAttribute(string menuPath, int groupLevel = UNSORTED_GROUP)
         {
-            var slashIndex = MenuPath.LastIndexOf('/');
+            _MenuPath = menuPath;
+            _GroupLevel = groupLevel;
+            var slashIndex = menuPath.LastIndexOf('/');
             if (slashIndex > 0)
             {
-                SubMenuPath = MenuPath[..slashIndex];
+                _SubMenuPath = menuPath[..slashIndex];
             }
         }
     }

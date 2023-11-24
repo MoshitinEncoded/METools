@@ -1,6 +1,7 @@
-using System.Linq;
 using System.Reflection;
+
 using MoshitinEncoded.GraphTools;
+
 using UnityEditor;
 using UnityEditor.Experimental.GraphView;
 using UnityEditor.UIElements;
@@ -11,14 +12,13 @@ namespace MoshitinEncoded.Editor.GraphTools
     {
         public static void Draw(BlackboardParameter parameter, BlackboardSection section)
         {
-            // Get the parameter type text
-            string typeText;
             var parameterAttribute = parameter.GetType().GetCustomAttribute<AddParameterMenuAttribute>();
+
+            string typeText;
 
             if (parameterAttribute != null)
             {
-                var parameterMenuPath = parameterAttribute.MenuPath.Split('/');
-                typeText = parameterMenuPath.Last();
+                typeText = GetTypeText(parameterAttribute.MenuPath);
             }
             else
             {
@@ -36,11 +36,11 @@ namespace MoshitinEncoded.Editor.GraphTools
             var serializedParameter = new SerializedObject(parameter);
             var valueProperty = serializedParameter.FindProperty("_Value");
 
-            var propertyValueField = new PropertyField(valueProperty);
-            propertyValueField.Bind(serializedParameter);
+            var valuePropertyField = new PropertyField(valueProperty);
+            valuePropertyField.Bind(serializedParameter);
 
             // Create the blackboard row that contains the property
-            var blackboardRow = new BlackboardRow(item: blackboardField, propertyView: propertyValueField)
+            var blackboardRow = new BlackboardRow(item: blackboardField, propertyView: valuePropertyField)
             {
                 expanded = serializedParameter.FindProperty("_IsExpanded").boolValue
             };
@@ -51,5 +51,12 @@ namespace MoshitinEncoded.Editor.GraphTools
 
         public static void SetExpandedState(BlackboardParameter parameter, bool isExpanded) =>
             new SerializedObject(parameter).FindProperty("_IsExpanded").boolValue = isExpanded;
+        
+        private static string GetTypeText(string menuPath)
+        {
+            var slashIndex = menuPath.LastIndexOf('/') + 1;
+            var typeText = slashIndex > 0 ? menuPath[slashIndex..] : menuPath;
+            return typeText;
+        }
     }
 }

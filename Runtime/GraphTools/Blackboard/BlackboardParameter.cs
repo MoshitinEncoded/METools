@@ -17,39 +17,52 @@ namespace MoshitinEncoded.GraphTools
             set => _ParameterName = value;
         }
 
-        public virtual object GetValue() { return null; }
-
-        public virtual bool SetValue(object value) { return true; }
-        
+        internal abstract bool TryGetValue<T>(out T value);
+        internal abstract bool TrySetValue<T>(T value);
         internal BlackboardParameter Clone() =>
             Instantiate(this);
     }
 
-    public class BlackboardParameter<T> : BlackboardParameter
+    public abstract class BlackboardParameter<T> : BlackboardParameter
     {
         [SerializeField] private T _Value;
 
-        public override object GetValue()
-        {
-            return _Value;
+        public T Value {
+            get => _Value;
+            set => _Value = value;
         }
 
-        public override bool SetValue(object value)
+        internal override bool TryGetValue<T1>(out T1 value)
         {
-            if (value is T newValue)
+            if (Value != null && Value is T1 returnValue)
             {
-                _Value = newValue;
-                return true;
-            }
-            else if (value == null)
-            {
-                _Value = default;
-                return true;
+                value = returnValue;
             }
             else
             {
+                value = default;
+            }
+
+            return typeof(T1).IsAssignableFrom(typeof(T));
+        }
+
+        internal override bool TrySetValue<T1>(T1 value)
+        {
+            if (!typeof(T).IsAssignableFrom(typeof(T1)))
+            {
                 return false;
             }
+
+            if (value != null && value is T setValue)
+            {
+                Value = setValue;
+            }
+            else
+            {
+                Value = default;
+            }
+
+            return true;
         }
     }
 }
