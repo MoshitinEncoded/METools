@@ -17,6 +17,8 @@ namespace MoshitinEncoded.GraphTools
             set => _ParameterName = value;
         }
 
+        public abstract object BoxedValue { get; }
+        
         internal abstract bool TryGetValue<T>(out T value);
         internal abstract bool TrySetValue<T>(T value);
         internal BlackboardParameter Clone() =>
@@ -27,10 +29,13 @@ namespace MoshitinEncoded.GraphTools
     {
         [SerializeField] private T _Value;
 
-        public T Value {
+        public T Value
+        {
             get => _Value;
             set => _Value = value;
         }
+
+        public override object BoxedValue => Value;
 
         internal override bool TryGetValue<T1>(out T1 value)
         {
