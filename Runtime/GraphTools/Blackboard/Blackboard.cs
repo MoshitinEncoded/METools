@@ -20,7 +20,7 @@ namespace MoshitinEncoded.GraphTools
             var clonedParameters = new BlackboardParameter[_Parameters.Length];
             for (var i = 0; i < _Parameters.Length; i++)
             {
-                clonedParameters[i] = _Parameters[i].Clone();
+                clonedParameters[i] = _Parameters[i] ? _Parameters[i].Clone() : null;
             }
 
             blackboardClone._Parameters = clonedParameters;
@@ -52,7 +52,7 @@ namespace MoshitinEncoded.GraphTools
             }
             else
             {
-                parameter = _Parameters.FirstOrDefault(p => p.ParameterName == name);
+                parameter = _Parameters.FirstOrDefault(p => p && p.ParameterName == name);
             }
 
             return parameter;
@@ -60,9 +60,10 @@ namespace MoshitinEncoded.GraphTools
 
         private void InitializeDictionary()
         {
-            _ParametersDictionary = new(Parameters.Length);
-            foreach (var parameter in Parameters)
+            _ParametersDictionary = new(_Parameters.Length);
+            foreach (var parameter in _Parameters)
             {
+                if (!parameter) continue;
                 _ParametersDictionary.Add(parameter.ParameterName, parameter);
             }
         }

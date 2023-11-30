@@ -11,18 +11,20 @@ using UnityEditor.Experimental.GraphView;
 using UnityEngine;
 using UnityEngine.UIElements;
 
-using Blackboard = UnityEditor.Experimental.GraphView.Blackboard;
+using GraphView = UnityEditor.Experimental.GraphView;
+using Blackboard = MoshitinEncoded.GraphTools.Blackboard;
 
 namespace MoshitinEncoded.Editor.GraphTools
 {
-    public class BlackboardView : Blackboard
+    public class BlackboardView : GraphView.Blackboard
     {
-        private MoshitinEncoded.GraphTools.Blackboard _Blackboard;
+        private Blackboard _Blackboard;
         private Type _ParameterBaseType;
         private SerializedObject _SerializedBlackboard;
         private BlackboardSection _ParametersSection;
+        private HideFlags _ParameterHideFlags;
 
-        public BlackboardView(GraphView graphView) : base(graphView)
+        public BlackboardView(GraphView.GraphView graphView) : base(graphView)
         {
             subTitle = "Blackboard";
             SetPosition(new Rect(10, 10, 300, 300));
@@ -32,7 +34,7 @@ namespace MoshitinEncoded.Editor.GraphTools
             moveItemRequested += OnMoveParameter;
         }
 
-        public void PopulateView(MoshitinEncoded.GraphTools.Blackboard blackboard, string title, Type parameterBaseType)
+        public void PopulateView(Blackboard blackboard, string title, Type parameterBaseType, HideFlags parameterHideFlags = HideFlags.HideInHierarchy)
         {
             if (_Blackboard == blackboard)
             {
@@ -44,11 +46,13 @@ namespace MoshitinEncoded.Editor.GraphTools
                 _Blackboard = blackboard;
                 _SerializedBlackboard = new SerializedObject(blackboard);
                 _ParameterBaseType = parameterBaseType;
+                _ParameterHideFlags = parameterHideFlags;
 
                 ResetParametersExpandedState();
             }
 
             Clear();
+            RemoveNullParameters();
 
             _ParametersSection = new BlackboardSection() { title = "Exposed Parameters" };
             DrawParameters();
@@ -68,22 +72,23 @@ namespace MoshitinEncoded.Editor.GraphTools
 
             if (parameterToRemove != null)
             {
-                RemoveFromBlackboard(parameterToRemove);
-                Undo.DestroyObjectImmediate(parameterToRemove);
+                RemoveParameterFromBlackboard(parameterToRemove);
             }
+        }
+
+        private void RemoveParameterFromBlackboard(BlackboardParameter parameterToRemove)
+        {
+            _SerializedBlackboard.Update();
+            _SerializedBlackboard.FindProperty("_Parameters").RemoveFromObjectArray(parameterToRemove);
+            _SerializedBlackboard.ApplyModifiedProperties();
+
+            Undo.DestroyObjectImmediate(parameterToRemove);
         }
 
         private void RemoveParameterFromView(BlackboardField parameterField)
         {
             var parameterRow = parameterField.GetFirstAncestorOfType<BlackboardRow>();
             _ParametersSection.Remove(parameterRow);
-        }
-
-        private void RemoveFromBlackboard(BlackboardParameter parameterToRemove)
-        {
-            _SerializedBlackboard.Update();
-            _SerializedBlackboard.FindProperty("_Parameters").RemoveFromObjectArray(parameterToRemove);
-            _SerializedBlackboard.ApplyModifiedProperties();
         }
 
         private void SaveParametersExpandedState()
@@ -106,6 +111,25 @@ namespace MoshitinEncoded.Editor.GraphTools
             }
         }
 
+        private void RemoveNullParameters()
+        {
+            var parameters = _Blackboard.Parameters;
+            for (var i = parameters.Length - 1; i >= 0; i--)
+            {
+                if (parameters[i] == null)
+                {
+                    RemoveNullParameterAtIndex(i);
+                }
+            }
+        }
+
+        private void RemoveNullParameterAtIndex(int i)
+        {
+            _SerializedBlackboard.Update();
+            _SerializedBlackboard.FindProperty("_Parameters").DeleteArrayElementAtIndex(i);
+            _SerializedBlackboard.ApplyModifiedPropertiesWithoutUndo();
+        }
+
         private void DrawParameters()
         {
             foreach (var parameter in _Blackboard.Parameters)
@@ -114,7 +138,7 @@ namespace MoshitinEncoded.Editor.GraphTools
             }
         }
 
-        private void OnAddParameter(Blackboard blackboard)
+        private void OnAddParameter(GraphView.Blackboard blackboard)
         {
             var menu = new GenericMenu();
             var parameterDatas = GetParameterDatas();
@@ -180,27 +204,40 @@ namespace MoshitinEncoded.Editor.GraphTools
 
         private void AddParameterTypeOf(object parameterType)
         {
-            // Create the parameter
+            var parameter = CreateParameter(parameterType);
+            
+            SetupParameter(parameter);
+            AddParameterToBlackboard(parameter);
+            BlackboardParameterDrawer.Draw(parameter, _ParametersSection);
+        }
+
+        private static BlackboardParameter CreateParameter(object parameterType)
+        {
             var newParameter = ScriptableObject.CreateInstance((Type)parameterType) as BlackboardParameter;
 
-            var parameterName = MakeParameterNameUnique(newParameter, "NewParameter");
-            newParameter.name = parameterName;
-            newParameter.ParameterName = parameterName;
+            Undo.RegisterCreatedObjectUndo(newParameter, "Create Parameter (Blackboard)");
+            Undo.RegisterCompleteObjectUndo(newParameter, "Create Parameter (Blackboard)");
 
-            // Add the parameter to the asset
-            AssetDatabase.AddObjectToAsset(newParameter, _Blackboard);
-            Undo.RegisterCreatedObjectUndo(newParameter, "Create Parameter (Behaviour Tree)");
+            return newParameter;
+        }
 
-            // Draw the parameter
-            BlackboardParameterDrawer.Draw(newParameter, _ParametersSection);
+        private void SetupParameter(BlackboardParameter parameter)
+        {
+            var parameterName = MakeParameterNameUnique(parameter, "NewParameter");
+            parameter.name = parameterName;
+            parameter.ParameterName = parameterName;
+            parameter.hideFlags = _ParameterHideFlags;
+        }
 
-            // Add the parameter to the behaviour tree
+        private void AddParameterToBlackboard(BlackboardParameter parameter)
+        {
+            AssetDatabase.AddObjectToAsset(parameter, _Blackboard);
             _SerializedBlackboard.Update();
-            _SerializedBlackboard.FindProperty("_Parameters").AddToObjectArray(newParameter);
+            _SerializedBlackboard.FindProperty("_Parameters").AddToObjectArray(parameter);
             _SerializedBlackboard.ApplyModifiedProperties();
         }
 
-        private void OnEditFieldText(Blackboard blackboard, VisualElement element, string newName)
+        private void OnEditFieldText(GraphView.Blackboard blackboard, VisualElement element, string newName)
         {
             if (newName == "")
             {
@@ -230,13 +267,13 @@ namespace MoshitinEncoded.Editor.GraphTools
 
                 parameterField.text = newName;
 
-                Undo.RecordObject(parameter, "Change Parameter Name (Behaviour Tree)");
+                Undo.RecordObject(parameter, "Change Parameter Name (Blackboard)");
                 parameter.name = newName;
                 parameter.ParameterName = newName;
             }
         }
 
-        private void OnMoveParameter(Blackboard blackboard, int newIndex, VisualElement element)
+        private void OnMoveParameter(GraphView.Blackboard blackboard, int newIndex, VisualElement element)
         {
             if (element is BlackboardField parameterField)
             {
