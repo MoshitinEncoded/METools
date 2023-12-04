@@ -49,9 +49,13 @@ namespace MoshitinEncoded.Editor.GraphTools
             section.Add(blackboardRow);
         }
 
-        public static void SetExpandedState(BlackboardParameter parameter, bool isExpanded) =>
-            new SerializedObject(parameter).FindProperty("_IsExpanded").boolValue = isExpanded;
-        
+        public static void SetExpandedState(BlackboardParameter parameter, bool isExpanded)
+        {
+            var serializedParameter = new SerializedObject(parameter);
+            serializedParameter.FindProperty("_IsExpanded").boolValue = isExpanded;
+            serializedParameter.ApplyModifiedPropertiesWithoutUndo();
+        }
+
         private static string GetTypeText(string menuPath)
         {
             var slashIndex = menuPath.LastIndexOf('/') + 1;
