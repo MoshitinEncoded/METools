@@ -211,9 +211,11 @@ namespace MoshitinEncoded.Editor.GraphTools
             BlackboardParameterDrawer.Draw(parameter, _ParametersSection);
         }
 
-        private static BlackboardParameter CreateParameter(object parameterType)
+        private BlackboardParameter CreateParameter(object parameterType)
         {
             var newParameter = ScriptableObject.CreateInstance((Type)parameterType) as BlackboardParameter;
+
+            AssetDatabase.AddObjectToAsset(newParameter, _Blackboard);
 
             Undo.RegisterCreatedObjectUndo(newParameter, "Create Parameter (Blackboard)");
             Undo.RegisterCompleteObjectUndo(newParameter, "Create Parameter (Blackboard)");
@@ -231,7 +233,6 @@ namespace MoshitinEncoded.Editor.GraphTools
 
         private void AddParameterToBlackboard(BlackboardParameter parameter)
         {
-            AssetDatabase.AddObjectToAsset(parameter, _Blackboard);
             _SerializedBlackboard.Update();
             _SerializedBlackboard.FindProperty("_Parameters").AddToObjectArray(parameter);
             _SerializedBlackboard.ApplyModifiedProperties();
