@@ -79,7 +79,7 @@ namespace MoshitinEncoded.Editor.GraphTools
         private void RemoveParameterFromBlackboard(BlackboardParameter parameterToRemove)
         {
             _SerializedBlackboard.Update();
-            _SerializedBlackboard.FindProperty("_Parameters").RemoveFromObjectArray(parameterToRemove);
+            _SerializedBlackboard.FindProperty("_Parameters").RemoveFromArray(parameterToRemove);
             _SerializedBlackboard.ApplyModifiedProperties();
 
             Undo.DestroyObjectImmediate(parameterToRemove);
@@ -234,7 +234,7 @@ namespace MoshitinEncoded.Editor.GraphTools
         private void AddParameterToBlackboard(BlackboardParameter parameter)
         {
             _SerializedBlackboard.Update();
-            _SerializedBlackboard.FindProperty("_Parameters").AddToObjectArray(parameter);
+            _SerializedBlackboard.FindProperty("_Parameters").AddToArray(parameter);
             _SerializedBlackboard.ApplyModifiedProperties();
         }
 
