@@ -13,14 +13,26 @@ namespace MoshitinEncoded.GraphTools
 
         public BlackboardParameter[] Parameters => _Parameters;
 
-        public Blackboard Clone()
+        public Blackboard Clone() =>
+            CloneAndOverride(null);
+
+        public Blackboard CloneAndOverride(BlackboardParameter[] overrides)
         {
             var blackboardClone = Instantiate(this);
 
             var clonedParameters = new BlackboardParameter[_Parameters.Length];
             for (var i = 0; i < _Parameters.Length; i++)
             {
-                clonedParameters[i] = _Parameters[i] ? _Parameters[i].Clone() : null;
+                var parameter = _Parameters[i];
+                if (overrides != null && parameter != null)
+                {
+                    clonedParameters[i] = FindOverride(parameter, overrides);
+                }
+
+                if (clonedParameters[i] == null)
+                {
+                    clonedParameters[i] = parameter ? parameter.Clone() : null;
+                }
             }
 
             blackboardClone._Parameters = clonedParameters;
@@ -28,6 +40,19 @@ namespace MoshitinEncoded.GraphTools
             blackboardClone.InitializeDictionary();
 
             return blackboardClone;
+        }
+
+        private BlackboardParameter FindOverride(BlackboardParameter parameter, BlackboardParameter[] overrides)
+        {
+            for (var i = 0; i < overrides.Length; i++)
+            {
+                if (overrides[i].ParameterName == parameter.ParameterName)
+                {
+                    return overrides[i];
+                }
+            }
+
+            return null;
         }
 
         public BlackboardParameter<T> GetParameter<T>(string name)
