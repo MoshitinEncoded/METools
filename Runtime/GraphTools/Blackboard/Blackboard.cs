@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 
 using UnityEngine;
@@ -16,7 +17,7 @@ namespace MoshitinEncoded.GraphTools
         public Blackboard Clone() =>
             CloneAndOverride(null);
 
-        public Blackboard CloneAndOverride(BlackboardParameter[] overrides)
+        public Blackboard CloneAndOverride(BlackboardParameterOverride[] overrides)
         {
             var blackboardClone = Instantiate(this);
 
@@ -28,7 +29,7 @@ namespace MoshitinEncoded.GraphTools
                 {
                     clonedParameters[i] = FindOverride(parameter, overrides);
                 }
-
+                
                 if (clonedParameters[i] == null)
                 {
                     clonedParameters[i] = parameter ? parameter.Clone() : null;
@@ -42,13 +43,13 @@ namespace MoshitinEncoded.GraphTools
             return blackboardClone;
         }
 
-        private BlackboardParameter FindOverride(BlackboardParameter parameter, BlackboardParameter[] overrides)
+        private BlackboardParameter FindOverride(BlackboardParameter parameter, BlackboardParameterOverride[] overrides)
         {
             for (var i = 0; i < overrides.Length; i++)
             {
-                if (overrides[i].ParameterName == parameter.ParameterName)
+                if (overrides[i].OriginalParameter == parameter)
                 {
-                    return overrides[i];
+                    return overrides[i].OverrideParameter;
                 }
             }
 
@@ -70,17 +71,30 @@ namespace MoshitinEncoded.GraphTools
 
         public BlackboardParameter GetParameter(string name)
         {
-            BlackboardParameter parameter;
-            if (_ParametersDictionary != null)
+            BlackboardParameter parameter = null;
+
+            _ParametersDictionary?.TryGetValue(name, out parameter);
+            
+            if (parameter == null)
             {
-                _ParametersDictionary.TryGetValue(name, out parameter);
-            }
-            else
-            {
-                parameter = _Parameters.FirstOrDefault(p => p && p.ParameterName == name);
+                parameter = FindParameter(name);
             }
 
             return parameter;
+        }
+
+        private BlackboardParameter FindParameter(string name)
+        {
+            for (var i = 0; i < _Parameters.Length; i++)
+            {
+                var tempParameter = _Parameters[i];
+                if (tempParameter.ParameterName == name)
+                {
+                    return tempParameter;
+                }
+            }
+
+            return null;
         }
 
         private void InitializeDictionary()
