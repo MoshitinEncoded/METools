@@ -215,7 +215,10 @@ namespace MoshitinEncoded.Editor.GraphTools
         {
             var newParameter = ScriptableObject.CreateInstance((Type)parameterType) as BlackboardParameter;
 
-            AssetDatabase.AddObjectToAsset(newParameter, _Blackboard);
+            if (!Application.isPlaying)
+            {
+                AssetDatabase.AddObjectToAsset(newParameter, _Blackboard);
+            }
 
             Undo.RegisterCreatedObjectUndo(newParameter, "Create Parameter (Blackboard)");
             Undo.RegisterCompleteObjectUndo(newParameter, "Create Parameter (Blackboard)");
