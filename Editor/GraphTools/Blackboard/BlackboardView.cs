@@ -60,6 +60,15 @@ namespace MoshitinEncoded.Editor.GraphTools
             Add(_ParametersSection);
         }
 
+        public void ClearView()
+        {
+            title = "";
+            _Blackboard = null;
+            _SerializedBlackboard = null;
+            _ParameterBaseType = null;
+            Clear();
+        }
+
         public void RemoveParameter(BlackboardField parameterField)
         {
             RemoveParameterFromBlackboard(parameterField);
@@ -140,6 +149,11 @@ namespace MoshitinEncoded.Editor.GraphTools
 
         private void OnAddParameter(GraphView.Blackboard blackboard)
         {
+            if (_Blackboard == null)
+            {
+                return;
+            }
+            
             var menu = new GenericMenu();
             var parameterDatas = GetParameterDatas();
 
